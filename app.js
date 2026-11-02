@@ -254,7 +254,7 @@ function resultHTML(e, r) {
 }
 function peerCard(e) {
   const p = PEER[e.id]; if (!p || !validR(p)) return "";
-  let h = '<div class="card"><div class="sec-head"><h3>Şöbə rəhbərinin (Qiymətləndirən 2) qiymətləndirməsi</h3></div><div class="pad"><div class="hint">' + esc(p.vn) + '</div><div class="secbars">';
+  let h = '<div class="card"><div class="sec-head"><h3>Qiymətləndirən 2-nin qiymətləndirməsi</h3></div><div class="pad"><div class="hint">' + esc(p.vn) + '</div><div class="secbars">';
   SECTIONS.forEach((sec, i) => { const a = avg(p.s[i]); h += '<div class="r s' + i + '"><span>' + esc(sec.title) + "</span><b>" + fmt(a) + '</b><div class="bar"><i style="width:' + a * 10 + '%"></i></div></div>'; });
   h += "</div><p><b>Bal: " + fmt(total(p)) + " / 100</b></p>";
   p.n.forEach((t, i) => { if (t && String(t).trim()) h += '<div class="hint">' + esc(SECTIONS[i].short) + " üzrə qeyd</div>" + esc(t); });
@@ -266,11 +266,11 @@ function mineHTML() {
   if (done.length && synced < done.length) h += '<div class="actions"><button class="btn primary" data-act="resync"' + (S.syncing ? " disabled" : "") + ">" + (S.syncing ? "Göndərilir…" : "Mərkəzə göndər") + "</button></div>" + (S.syncMsg ? '<div class="err">' + esc(S.syncMsg) + "</div>" : "");
   else if (done.length) h += '<span class="verdict good" style="align-self:flex-start">Bütün nəticələr mərkəzə çatıb</span>';
   else h += '<p class="hint" style="margin:0">Hələ heç bir işçi qiymətləndirilməyib.</p>';
-  h += (done.length ? resetCtl("all", "Bütün qiymətlərimi sıfırla") : "") + '</div><div class="card tablebox"><table><thead><tr><th>İşçi</th><th>Struktur bölmə</th>' + SECTIONS.map(s => '<th class="num">' + esc(s.short) + "</th>").join("") + '<th class="num">Bal / 100</th>' + (Object.keys(PEER).length ? '<th class="num">Şöbə rəhbərinin balı</th>' : "") + "</tr></thead><tbody>";
+  h += (done.length ? resetCtl("all", "Bütün qiymətlərimi sıfırla") : "") + '</div><div class="card tablebox"><table><thead><tr><th>İşçi</th><th>Struktur bölmə</th>' + SECTIONS.map(s => '<th class="num">' + esc(s.short) + "</th>").join("") + '<th class="num">Bal / 100</th>' + (Object.keys(PEER).length ? '<th class="num">Qiymətləndirən 2-nin balı</th>' : "") + "</tr></thead><tbody>";
   EMPS.forEach(e => {
     const r = rec(e.id);
-    if (!validR(r)) { h += '<tr><td><a href="#" data-emp="' + e.id + '" data-go="1">' + esc(e.name) + "</a></td><td>" + esc(e.unit || e.dept) + '</td><td colspan="4" class="hint">Qiymətləndirilməyib</td>' + (Object.keys(PEER).length ? '<td class="num">' + (PEER[e.id] ? fmt(total(PEER[e.id])) : "–") + "</td>" : "") + "</tr>"; return; }
-    h += "<tr><td>" + esc(e.name) + "</td><td>" + esc(e.unit || e.dept) + "</td>" + secAvgs(r).map(v => '<td class="num">' + fmt(v) + "</td>").join("") + '<td class="num"><b>' + fmt(total(r)) + "</b></td>" + (Object.keys(PEER).length ? '<td class="num">' + (PEER[e.id] ? fmt(total(PEER[e.id])) : "–") + "</td>" : "") + "</tr>";
+    if (!validR(r)) { h += '<tr><td><a href="#" data-emp="' + e.id + '" data-go="1">' + esc(e.name) + "</a></td><td>" + esc(e.unit || e.dept) + '</td><td colspan="4" class="hint">Qiymətləndirilməyib</td>' + (Object.keys(PEER).length ? '<td class="num">' + (PEER[e.id] ? fmt(total(PEER[e.id])) + '<div class="hint">' + esc(PEER[e.id].vn) + "</div>" : "–") + "</td>" : "") + "</tr>"; return; }
+    h += "<tr><td>" + esc(e.name) + "</td><td>" + esc(e.unit || e.dept) + "</td>" + secAvgs(r).map(v => '<td class="num">' + fmt(v) + "</td>").join("") + '<td class="num"><b>' + fmt(total(r)) + "</b></td>" + (Object.keys(PEER).length ? '<td class="num">' + (PEER[e.id] ? fmt(total(PEER[e.id])) + '<div class="hint">' + esc(PEER[e.id].vn) + "</div>" : "–") + "</td>" : "") + "</tr>";
   });
   return h + "</tbody></table></div>";
 }
