@@ -1,2 +1,2 @@
-// Google Apps Script veb tətbiqinin ünvanını bura yapışdırın (https://script.google.com/macros/s/.../exec)
-window.SBP_API = "";
+// Google Apps Script veb tətbiqinin ünvanı
+window.SBP_API = "https://script.google.com/macros/s/AKfycbzyaljbaveHpS0cjmUO9ksLOZeKdlp31jH7rFVmPBiaZ4JyE8QmusElfaRZi09pPq9a/exec";
