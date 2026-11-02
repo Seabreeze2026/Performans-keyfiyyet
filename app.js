@@ -35,7 +35,7 @@ const EMP = id => EMPS.find(e => e.id === id);
 
 /* ---------- STATE ---------- */
 const S = { ev: null, pin: "", admin: false, hrPin: "", dept: "", unit: "all", emp: null, view: "form", atab: "progress", rdept: "all",
-  loginErr: "", hrErr: "", syncMsg: "", confirm: "", rconf: "", showAll: false, det: null, busy: false, loading: true, loadErr: "", syncing: false, hrAt: null };
+  loginErr: "", hrErr: "", syncMsg: "", confirm: "", rconf: "", showAll: true, det: null, busy: false, loading: true, loadErr: "", syncing: false, hrAt: null };
 let LOC = { ratings: {} }, RAT = {}, APPR = {}, pollT = null;
 const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
@@ -231,7 +231,7 @@ function updateDock() {
   const r = rec(e.id), n = filled(r), list = scoped(), last = list.findIndex(x => x.id === e.id) === list.length - 1;
   const a = secAvgs(r), t = a.every(x => x != null) ? total(r) : null, dock = $("dock");
   dock.hidden = false;
-  dock.innerHTML = '<div class="dock-in"><div class="live"><span>Dolduruldu <b>' + n + " / " + TOTAL_CRIT + "</b></span><span>Cari bal <b>" + (t == null ? "–" : fmt(t)) + '</b> / 100</span></div><button class="btn primary" data-act="save"' + (n < TOTAL_CRIT ? " disabled" : "") + ">" + (last ? "Saxla və nəticəyə bax" : "Saxla və növbəti işçiyə keç") + "</button></div>";
+  dock.innerHTML = '<div class="dock-in"><div class="live"><span>Dolduruldu <b>' + n + " / " + TOTAL_CRIT + "</b></span><span>Cari bal <b>" + (t == null ? "–" : fmt(t)) + '</b> / 100</span></div><button class="btn primary" data-act="' + (n < TOTAL_CRIT ? "gap" : "save") + '">' + (n < TOTAL_CRIT ? "Boş qalan meyara keç (" + (TOTAL_CRIT - n) + ")" : last ? "Saxla və nəticəyə bax" : "Saxla və növbəti işçiyə keç") + "</button></div>";
   SECTIONS.forEach((s, i) => { const x = document.querySelector('[data-avg="' + i + '"]'); if (x) x.textContent = "Orta: " + fmt(a[i]); });
 }
 function resultBlock(r) {
@@ -335,7 +335,7 @@ function adminBody() {
 function finalOf(p) { if (!p.rs.length) return null; const c = combine(p.rs, p.ws); return { c, t: total(c), x: recommend(c) }; }
 function resultsHTML(per) {
   const depts = [...new Set(EMPS.map(e => e.dept))], rows = per.filter(p => S.rdept === "all" || p.e.dept === S.rdept);
-  let h = '<div class="actions"><div class="field" style="min-width:260px"><label for="r-dept">Departament</label><select id="r-dept"><option value="all">Hamısı</option>' + depts.map(d => '<option value="' + esc(d) + '"' + (d === S.rdept ? " selected" : "") + ">" + esc(d) + "</option>").join("") + '</select></div><label style="display:flex;gap:8px;align-items:center;align-self:flex-end"><input type="checkbox" id="r-all"' + (S.showAll ? " checked" : "") + '> Təsdiqlənməmişləri də göstər</label><button class="btn primary" data-act="csv" style="align-self:flex-end">Excel üçün yüklə (CSV)</button></div>';
+  let h = '<div class="actions"><div class="field" style="min-width:260px"><label for="r-dept">Departament</label><select id="r-dept"><option value="all">Hamısı</option>' + depts.map(d => '<option value="' + esc(d) + '"' + (d === S.rdept ? " selected" : "") + ">" + esc(d) + "</option>").join("") + '</select></div><label style="display:flex;gap:8px;align-items:center;align-self:flex-end"><input type="checkbox" id="r-all"' + (S.showAll ? " checked" : "") + '> Təsdiqlənməmiş qiymətləri də göstər</label><button class="btn primary" data-act="csv" style="align-self:flex-end">Excel üçün yüklə (CSV)</button></div>';
   h += '<div class="card tablebox"><table><thead><tr><th>İşçi</th><th>Struktur bölmə</th><th class="num">1-ci qiymətləndirən</th><th class="num">2-ci qiymətləndirən</th><th class="num">Yekun bal</th><th>Nəticə</th><th></th></tr></thead><tbody>';
   rows.forEach(p => {
     const sc = p.e.evs.map(v => { const r = RAT[p.e.id + "__" + v]; return validR(r) ? (S.showAll || evStatus(v) === "approved" ? fmt(total(r)) : '<span class="hint">təsdiq gözlənir</span>') : "–"; });
@@ -407,6 +407,7 @@ document.addEventListener("click", async ev => {
   else if (act === "reset-no") { S.confirm = ""; renderSheet(); }
   else if (act === "reset-yes") doReset(b.dataset.id);
   else if (b.dataset.emp) { const e = EMP(b.dataset.emp); S.dept = e.dept; S.unit = "all"; S.emp = e.id; S.view = validR(rec(e.id)) ? "result" : "form"; render(); window.scrollTo({ top: 0 }); }
+  else if (act === "gap") { const r = rec(curEmp().id); for (let i = 0; i < r.s.length; i++) for (let j = 0; j < r.s[i].length; j++) if (r.s[i][j] == null) { const c = document.querySelector('input[name="r' + i + "-" + j + '"]').closest(".crit"); document.querySelectorAll(".crit.gap").forEach(x => x.classList.remove("gap")); c.classList.add("gap"); c.scrollIntoView({ behavior: "smooth", block: "center" }); return; } }
   else if (act === "save") { const r = rec(curEmp().id); r.done = true; r.synced = false; r.at = new Date().toISOString(); saveLoc(); S.view = "result"; render(); window.scrollTo({ top: 0, behavior: "smooth" }); syncAll(); }
   else if (act === "edit") { S.view = "form"; render(); }
   else if (act === "next") { S.emp = b.dataset.to; S.view = "form"; render(); window.scrollTo({ top: 0 }); }
