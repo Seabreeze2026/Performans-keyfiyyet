@@ -36,7 +36,7 @@ const EMP = id => EMPS.find(e => e.id === id);
 /* ---------- STATE ---------- */
 const S = { ev: null, pin: "", admin: false, hrPin: "", dept: "", unit: "all", emp: null, view: "form", atab: "progress", rdept: "all",
   loginErr: "", hrErr: "", syncMsg: "", confirm: "", rconf: "", showAll: true, det: null, busy: false, loading: true, loadErr: "", syncing: false, hrAt: null };
-let LOC = { ratings: {} }, RAT = {}, APPR = {}, pollT = null;
+let PEER = {}, LOC = { ratings: {} }, RAT = {}, APPR = {}, pollT = null;
 const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const ssGet = k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } };
@@ -119,7 +119,7 @@ async function doLogin(id, pin, silent) {
     const j = await api("login", { ev: id, pin });
     S.ev = id; S.pin = pin; S.admin = false;
     EMPS = j.emps.map(a => ({ id: a[0], dept: a[1], unit: a[2], name: a[3], pos: a[4], evs: [id] }));
-    loadLoc();
+    loadLoc(); setPeers(j);
     const srv = {}; j.ratings.forEach(r => { srv[r.e] = r; });
     Object.keys(LOC.ratings).forEach(k => { const r = LOC.ratings[k]; if (r.done && r.synced && !srv[k]) LOC.ratings[k] = blank(); });
     Object.keys(srv).forEach(k => { const r = srv[k]; LOC.ratings[k] = { s: unflat(r.s), notes: r.n || ["", "", ""], done: true, synced: true, at: r.at }; });
@@ -128,6 +128,8 @@ async function doLogin(id, pin, silent) {
   } catch (e) { if (!silent) S.loginErr = e.message; ssSet("sbp3_sess", null); }
   S.busy = false; render();
 }
+function setPeers(j) { PEER = {}; (j.peers || []).forEach(r => { PEER[r.e] = { s: unflat(r.s), n: r.n, vn: r.vn, at: r.at, done: true }; }); }
+async function refreshPeers() { try { setPeers(await api("login", { ev: S.ev, pin: S.pin })); } catch (e) {} }
 async function syncAll() {
   if (!S.ev || S.syncing) return;
   const pend = Object.entries(LOC.ratings).filter(([, r]) => validR(r) && !r.synced);
@@ -248,7 +250,15 @@ function resultHTML(e, r) {
   const list = scoped(), next = list.slice(list.findIndex(y => y.id === e.id) + 1).find(y => !validR(rec(y.id))) || list.find(y => !validR(rec(y.id)));
   let h = '<div class="card who"><h2>' + esc(e.name) + "</h2>" + cell("Vəzifə", e.pos) + cell("Struktur bölmə", e.dept + (e.unit ? " · " + e.unit : "")) + '<div class="resetbar">' + syncBadge(r) + "</div></div>" + resultBlock(r);
   r.notes.forEach((n, i) => { if (n && n.trim()) h += '<div class="card pad"><div class="hint">' + esc(SECTIONS[i].short) + " üzrə qeyd</div>" + esc(n) + "</div>"; });
-  return h + '<div class="actions"><button class="btn" data-act="edit">Qiymətləri düzəlt</button>' + (next ? '<button class="btn primary" data-act="next" data-to="' + next.id + '">Növbəti işçi: ' + esc(next.name) + "</button>" : '<button class="btn primary" data-act="mine">Bütün nəticələrim</button>') + "</div>" + resetCtl(e.id, "Bu işçinin qiymətlərini sıfırla");
+  return h + peerCard(e) + '<div class="actions"><button class="btn" data-act="edit">Qiymətləri düzəlt</button>' + (next ? '<button class="btn primary" data-act="next" data-to="' + next.id + '">Növbəti işçi: ' + esc(next.name) + "</button>" : '<button class="btn primary" data-act="mine">Bütün nəticələrim</button>') + "</div>" + resetCtl(e.id, "Bu işçinin qiymətlərini sıfırla");
+}
+function peerCard(e) {
+  const p = PEER[e.id]; if (!p || !validR(p)) return "";
+  let h = '<div class="card"><div class="sec-head"><h3>Şöbə rəhbərinin (Qiymətləndirən 2) qiymətləndirməsi</h3></div><div class="pad"><div class="hint">' + esc(p.vn) + '</div><div class="secbars">';
+  SECTIONS.forEach((sec, i) => { const a = avg(p.s[i]); h += '<div class="r s' + i + '"><span>' + esc(sec.title) + "</span><b>" + fmt(a) + '</b><div class="bar"><i style="width:' + a * 10 + '%"></i></div></div>'; });
+  h += "</div><p><b>Bal: " + fmt(total(p)) + " / 100</b></p>";
+  p.n.forEach((t, i) => { if (t && String(t).trim()) h += '<div class="hint">' + esc(SECTIONS[i].short) + " üzrə qeyd</div>" + esc(t); });
+  return h + "</div></div>";
 }
 function mineHTML() {
   const done = EMPS.filter(e => validR(rec(e.id))), synced = done.filter(e => rec(e.id).synced).length;
@@ -256,11 +266,11 @@ function mineHTML() {
   if (done.length && synced < done.length) h += '<div class="actions"><button class="btn primary" data-act="resync"' + (S.syncing ? " disabled" : "") + ">" + (S.syncing ? "Göndərilir…" : "Mərkəzə göndər") + "</button></div>" + (S.syncMsg ? '<div class="err">' + esc(S.syncMsg) + "</div>" : "");
   else if (done.length) h += '<span class="verdict good" style="align-self:flex-start">Bütün nəticələr mərkəzə çatıb</span>';
   else h += '<p class="hint" style="margin:0">Hələ heç bir işçi qiymətləndirilməyib.</p>';
-  h += (done.length ? resetCtl("all", "Bütün qiymətlərimi sıfırla") : "") + '</div><div class="card tablebox"><table><thead><tr><th>İşçi</th><th>Struktur bölmə</th>' + SECTIONS.map(s => '<th class="num">' + esc(s.short) + "</th>").join("") + '<th class="num">Bal / 100</th></tr></thead><tbody>';
+  h += (done.length ? resetCtl("all", "Bütün qiymətlərimi sıfırla") : "") + '</div><div class="card tablebox"><table><thead><tr><th>İşçi</th><th>Struktur bölmə</th>' + SECTIONS.map(s => '<th class="num">' + esc(s.short) + "</th>").join("") + '<th class="num">Bal / 100</th>' + (Object.keys(PEER).length ? '<th class="num">Şöbə rəhbərinin balı</th>' : "") + "</tr></thead><tbody>";
   EMPS.forEach(e => {
     const r = rec(e.id);
-    if (!validR(r)) { h += '<tr><td><a href="#" data-emp="' + e.id + '" data-go="1">' + esc(e.name) + "</a></td><td>" + esc(e.unit || e.dept) + '</td><td colspan="4" class="hint">Qiymətləndirilməyib</td></tr>'; return; }
-    h += "<tr><td>" + esc(e.name) + "</td><td>" + esc(e.unit || e.dept) + "</td>" + secAvgs(r).map(v => '<td class="num">' + fmt(v) + "</td>").join("") + '<td class="num"><b>' + fmt(total(r)) + "</b></td></tr>";
+    if (!validR(r)) { h += '<tr><td><a href="#" data-emp="' + e.id + '" data-go="1">' + esc(e.name) + "</a></td><td>" + esc(e.unit || e.dept) + '</td><td colspan="4" class="hint">Qiymətləndirilməyib</td>' + (Object.keys(PEER).length ? '<td class="num">' + (PEER[e.id] ? fmt(total(PEER[e.id])) : "–") + "</td>" : "") + "</tr>"; return; }
+    h += "<tr><td>" + esc(e.name) + "</td><td>" + esc(e.unit || e.dept) + "</td>" + secAvgs(r).map(v => '<td class="num">' + fmt(v) + "</td>").join("") + '<td class="num"><b>' + fmt(total(r)) + "</b></td>" + (Object.keys(PEER).length ? '<td class="num">' + (PEER[e.id] ? fmt(total(PEER[e.id])) : "–") + "</td>" : "") + "</tr>";
   });
   return h + "</tbody></table></div>";
 }
@@ -408,10 +418,10 @@ document.addEventListener("click", async ev => {
   else if (act === "reset-yes") doReset(b.dataset.id);
   else if (b.dataset.emp) { const e = EMP(b.dataset.emp); S.dept = e.dept; S.unit = "all"; S.emp = e.id; S.view = validR(rec(e.id)) ? "result" : "form"; render(); window.scrollTo({ top: 0 }); }
   else if (act === "gap") { const r = rec(curEmp().id); for (let i = 0; i < r.s.length; i++) for (let j = 0; j < r.s[i].length; j++) if (r.s[i][j] == null) { const c = document.querySelector('input[name="r' + i + "-" + j + '"]').closest(".crit"); document.querySelectorAll(".crit.gap").forEach(x => x.classList.remove("gap")); c.classList.add("gap"); c.scrollIntoView({ behavior: "smooth", block: "center" }); return; } }
-  else if (act === "save") { const r = rec(curEmp().id); r.done = true; r.synced = false; r.at = new Date().toISOString(); saveLoc(); S.view = "result"; render(); window.scrollTo({ top: 0, behavior: "smooth" }); syncAll(); }
+  else if (act === "save") { setTimeout(() => refreshPeers().then(() => { if (S.view === "result") renderSheet(); }), 1500); const r = rec(curEmp().id); r.done = true; r.synced = false; r.at = new Date().toISOString(); saveLoc(); S.view = "result"; render(); window.scrollTo({ top: 0, behavior: "smooth" }); syncAll(); }
   else if (act === "edit") { S.view = "form"; render(); }
   else if (act === "next") { S.emp = b.dataset.to; S.view = "form"; render(); window.scrollTo({ top: 0 }); }
-  else if (act === "mine") { S.view = "mine"; render(); window.scrollTo({ top: 0 }); }
+  else if (act === "mine") { S.view = "mine"; render(); refreshPeers().then(() => { if (S.view === "mine") renderSheet(); }); window.scrollTo({ top: 0 }); }
   else if (act === "resync") { S.syncMsg = ""; syncAll(); }
   else if (act === "logout") { S.ev = null; S.pin = ""; S.admin = false; S.hrPin = ""; clearInterval(pollT); ssSet("sbp3_sess", null); ssSet("sbp3_hr", null); EMPS = []; RAT = {}; APPR = {}; render(); loadEvs(); }
   else if (act === "csv") exportCSV();
