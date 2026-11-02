@@ -35,7 +35,7 @@ const EMP = id => EMPS.find(e => e.id === id);
 
 /* ---------- STATE ---------- */
 const S = { ev: null, pin: "", admin: false, hrPin: "", dept: "", unit: "all", emp: null, view: "form", atab: "progress", rdept: "all",
-  loginErr: "", hrErr: "", syncMsg: "", confirm: "", rconf: "", showAll: false, busy: false, loading: true, loadErr: "", syncing: false, hrAt: null };
+  loginErr: "", hrErr: "", syncMsg: "", confirm: "", rconf: "", showAll: false, det: null, busy: false, loading: true, loadErr: "", syncing: false, hrAt: null };
 let LOC = { ratings: {} }, RAT = {}, APPR = {}, pollT = null;
 const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
@@ -73,7 +73,8 @@ const blank = () => ({ s: SECTIONS.map(s => s.criteria.map(() => null)), notes: 
 function rec(id) { if (!LOC.ratings[id]) LOC.ratings[id] = blank(); return LOC.ratings[id]; }
 const filled = r => r.s.reduce((a, sec) => a + sec.filter(x => x != null).length, 0);
 const secAvgs = r => r.s.map(avg);
-function total(r) { const a = secAvgs(r); return a.some(x => x == null) ? null : avg(a) * 10; }
+const W = [0.4, 0.4, 0.2], EVW = [0.6, 0.4]; // istiqamət çəkiləri: 40/40/20; qiymətləndirən çəkiləri: 60/40
+function total(r) { const a = secAvgs(r); return a.some(x => x == null) ? null : a.reduce((t, v, i) => t + v * W[i], 0) * 10; }
 const tone = v => v >= 80 ? "good" : v >= 65 ? "mid" : "low";
 const fmt = (v, d = 1) => v == null ? "–" : v.toFixed(d).replace(".", ",");
 const n1 = v => Number.isInteger(v) ? String(v) : fmt(v);
@@ -108,7 +109,7 @@ function recommend(r) {
   if (t < 60) out.push("Yekun bal 60-dan aşağıdır. Fərdi inkişaf planı hazırlanmalı və 3 ay sonra təkrar qiymətləndirmə aparılmalıdır.");
   return { band: b, items: out, t, a };
 }
-const combine = list => ({ s: SECTIONS.map((sec, i) => sec.criteria.map((_, j) => avg(list.map(r => r.s[i][j])))) });
+const combine = (list, ws) => { const w = ws || list.map(() => 1); return { s: SECTIONS.map((sec, i) => sec.criteria.map((_, j) => { let t = 0, sw = 0; list.forEach((r, k) => { t += r.s[i][j] * w[k]; sw += w[k]; }); return sw ? t / sw : null; })) }; };
 const validR = r => r && r.done && Array.isArray(r.s) && r.s.length === 3 && r.s.every((x, i) => Array.isArray(x) && x.length === SECTIONS[i].criteria.length && x.every(v => Number.isInteger(v) && v >= 1 && v <= 10));
 
 /* ---------- RƏHBƏR: giriş və sinxronlaşma ---------- */
@@ -291,7 +292,7 @@ function evStatus(v) {
 function stats() {
   return EMPS.map(e => {
     const all = e.evs.filter(v => validR(RAT[e.id + "__" + v])), use = all.filter(v => S.showAll || evStatus(v) === "approved");
-    return { e, all, rs: use.map(v => RAT[e.id + "__" + v]), n: e.evs.length, dAll: all.length, d: use.length };
+    return { e, all, rs: use.map(v => RAT[e.id + "__" + v]), ws: use.map(v => e.evs.length > 1 ? EVW[e.evs.indexOf(v)] : 1), n: e.evs.length, dAll: all.length, d: use.length };
   });
 }
 const pendingCount = () => EVS.filter(v => evStatus(v.id) === "pending").length;
@@ -331,17 +332,35 @@ function adminBody() {
       return "<tr><td>" + esc(d) + '</td><td class="num">' + p.length + '</td><td class="num">' + f + '</td><td class="num">' + y + '</td><td><div class="mini"><div class="bar"><i style="width:' + Math.round(dn / ex * 100) + '%"></i></div><b>' + Math.round(dn / ex * 100) + "%</b></div></td></tr>"; }).join("") + "</tbody></table></div></div>";
   el.innerHTML = h;
 }
-function finalOf(p) { if (!p.rs.length) return null; const c = combine(p.rs); return { c, t: total(c), x: recommend(c) }; }
+function finalOf(p) { if (!p.rs.length) return null; const c = combine(p.rs, p.ws); return { c, t: total(c), x: recommend(c) }; }
 function resultsHTML(per) {
   const depts = [...new Set(EMPS.map(e => e.dept))], rows = per.filter(p => S.rdept === "all" || p.e.dept === S.rdept);
   let h = '<div class="actions"><div class="field" style="min-width:260px"><label for="r-dept">Departament</label><select id="r-dept"><option value="all">Hamısı</option>' + depts.map(d => '<option value="' + esc(d) + '"' + (d === S.rdept ? " selected" : "") + ">" + esc(d) + "</option>").join("") + '</select></div><label style="display:flex;gap:8px;align-items:center;align-self:flex-end"><input type="checkbox" id="r-all"' + (S.showAll ? " checked" : "") + '> Təsdiqlənməmişləri də göstər</label><button class="btn primary" data-act="csv" style="align-self:flex-end">Excel üçün yüklə (CSV)</button></div>';
-  h += '<div class="card tablebox"><table><thead><tr><th>İşçi</th><th>Struktur bölmə</th><th class="num">1-ci qiymətləndirən</th><th class="num">2-ci qiymətləndirən</th><th class="num">Yekun bal</th><th>Nəticə</th></tr></thead><tbody>';
+  h += '<div class="card tablebox"><table><thead><tr><th>İşçi</th><th>Struktur bölmə</th><th class="num">1-ci qiymətləndirən</th><th class="num">2-ci qiymətləndirən</th><th class="num">Yekun bal</th><th>Nəticə</th><th></th></tr></thead><tbody>';
   rows.forEach(p => {
     const sc = p.e.evs.map(v => { const r = RAT[p.e.id + "__" + v]; return validR(r) ? (S.showAll || evStatus(v) === "approved" ? fmt(total(r)) : '<span class="hint">təsdiq gözlənir</span>') : "–"; });
     const f = finalOf(p);
-    h += "<tr><td>" + esc(p.e.name) + '<div class="hint">' + esc(p.e.pos) + "</div></td><td>" + esc(p.e.unit || p.e.dept) + '</td><td class="num">' + sc[0] + '</td><td class="num">' + (p.e.evs.length > 1 ? sc[1] : '<span class="hint">yoxdur</span>') + '</td><td class="num"><b>' + (f ? fmt(f.t) : "–") + "</b>" + (f && p.d < p.n ? '<div class="hint">' + p.d + "/" + p.n + "</div>" : "") + "</td><td>" + (f ? '<span class="verdict ' + f.x.band.tone + '">' + esc(f.x.band.name) + "</span>" : '<span class="hint">gözlənilir</span>') + "</td></tr>";
+    h += "<tr><td>" + esc(p.e.name) + '<div class="hint">' + esc(p.e.pos) + "</div></td><td>" + esc(p.e.unit || p.e.dept) + '</td><td class="num">' + sc[0] + '</td><td class="num">' + (p.e.evs.length > 1 ? sc[1] : '<span class="hint">yoxdur</span>') + '</td><td class="num"><b>' + (f ? fmt(f.t) : "–") + "</b>" + (f && p.d < p.n ? '<div class="hint">' + p.d + "/" + p.n + "</div>" : "") + "</td><td>" + (f ? '<span class="verdict ' + f.x.band.tone + '">' + esc(f.x.band.name) + "</span>" : '<span class="hint">gözlənilir</span>') + "</td><td>" + (f ? '<button class="btn small" data-det="' + p.e.id + '">' + (S.det === p.e.id ? "Bağla" : "Bax") + "</button>" : "") + "</td></tr>";
+    if (f && S.det === p.e.id) h += '<tr><td colspan="7" style="background:var(--bg,#f6f8fb)">' + detailHTML(p, f) + "</td></tr>";
   });
   return h + "</tbody></table></div>";
+}
+function detailHTML(p, f) {
+  const cols = p.e.evs.map((v, k) => { const r = RAT[p.e.id + "__" + v]; return { v, r, ok: !!r && p.rs.includes(r), w: p.e.evs.length > 1 ? EVW[k] : 1 }; });
+  const nm = c => esc(EV(c.v).name) + '<div class="hint">çəki ' + Math.round(c.w * 100) + "%</div>";
+  let h = '<div class="pad"><b>' + esc(p.e.name) + "</b> · " + esc(p.e.pos) + '<div class="hint">İstiqamət çəkiləri: ' + SECTIONS.map((s, i) => esc(s.short) + " " + Math.round(W[i] * 100) + "%").join(", ") + (p.d < p.n ? ". Diqqət: bütün qiymətləndirənlər tamamlamayıb, bal müvəqqətidir." : "") + "</div></div>";
+  h += '<div class="tablebox"><table><thead><tr><th>Meyar</th>' + cols.map(c => '<th class="num">' + nm(c) + "</th>").join("") + '<th class="num">Yekun</th></tr></thead><tbody>';
+  SECTIONS.forEach((sec, i) => {
+    h += '<tr class="s' + i + '"><td colspan="' + (cols.length + 2) + '"><b>' + esc(sec.title) + " (" + Math.round(W[i] * 100) + "%)</b></td></tr>";
+    sec.criteria.forEach((cr, j) => { h += "<tr><td>" + esc(cr) + "</td>" + cols.map(c => '<td class="num">' + (c.ok ? c.r.s[i][j] : "–") + "</td>").join("") + '<td class="num"><b>' + fmt(f.c.s[i][j]) + "</b></td></tr>"; });
+    h += '<tr><td><i>Orta</i></td>' + cols.map(c => '<td class="num">' + (c.ok ? fmt(avg(c.r.s[i])) : "–") + "</td>").join("") + '<td class="num"><b>' + fmt(avg(f.c.s[i])) + "</b></td></tr>";
+  });
+  h += '<tr><td><b>Bal / 100</b></td>' + cols.map(c => '<td class="num"><b>' + (c.ok ? fmt(total(c.r)) : "–") + "</b></td>").join("") + '<td class="num"><b>' + fmt(f.t) + "</b></td></tr></tbody></table></div>";
+  const notes = [];
+  cols.forEach(c => { if (c.ok && c.r.n) c.r.n.forEach((t, i) => { if (t && String(t).trim()) notes.push("<li><b>" + esc(EV(c.v).name) + "</b> · " + esc(SECTIONS[i].short) + ": " + esc(t) + "</li>"); }); });
+  if (notes.length) h += '<div class="pad"><b>Qeydlər</b><ul class="recs">' + notes.join("") + "</ul></div>";
+  h += '<div class="pad"><b>Tövsiyələr</b><ul class="recs">' + f.x.items.map(t => "<li>" + esc(t) + "</li>").join("") + "</ul></div>";
+  return h;
 }
 function exportCSV() {
   const q = v => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"', hd = ["Departament", "Şöbə", "İşçi", "Vəzifə", "1-ci qiymətləndirən", "1-ci bal", "2-ci qiymətləndirən", "2-ci bal"];
@@ -377,6 +396,7 @@ document.addEventListener("click", async ev => {
   const b = ev.target.closest("button, a[data-go]"); if (!b) return;
   const act = b.dataset.act;
   if (b.dataset.go) ev.preventDefault();
+  if (b.dataset.det) { S.det = S.det === b.dataset.det ? null : b.dataset.det; return adminBody(); }
   if (b.dataset.rask) { S.rconf = b.dataset.rask; adminBody(); }
   else if (b.dataset.ryes) hrAct("hr_reset", b.dataset.ryes);
   else if (b.dataset.rno) { S.rconf = ""; adminBody(); }
