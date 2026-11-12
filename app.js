@@ -168,6 +168,7 @@ async function doReset(id) {
 /* ---------- RENDER (rəhbər) ---------- */
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const hrDept = e => /^Əməyin/.test(e.unit || "") ? e.unit : e.dept;
 const myDepts = () => [...new Set(EMPS.map(e => e.dept))];
 const GORD = { main: 0, add: 1, opt: 2 };
 function scoped() { return EMPS.filter(e => e.dept === S.dept && (S.unit === "all" || (S.unit === "_none" ? !e.unit : e.unit === S.unit))).map((e, i) => ({ e, i })).sort((a, b) => GORD[grp(a.e)] - GORD[grp(b.e)] || a.i - b.i).map(a => a.e); }
@@ -417,15 +418,15 @@ function adminBody() {
   h += '<div class="card"><div class="sec-head"><h3>Qiymətləndirənlər üzrə</h3></div><div class="tablebox"><table><thead><tr><th>Qiymətləndirən</th><th>Departament</th><th class="num">Əsas (məcburi)</th><th class="num">Tamamlayıb</th><th>İrəliləyiş</th><th class="num">Digər əməkdaşlar (könüllü)</th><th>Status</th><th>Son fəaliyyət</th><th></th></tr></thead><tbody>' +
     evRows.map(r => "<tr><td>" + esc(r.v.name) + "</td><td>" + esc(r.depts.join(", ")) + '</td><td class="num">' + r.n + '</td><td class="num">' + r.d + '</td><td>' + (r.n ? '<div class="mini"><div class="bar"><i style="width:' + Math.round(r.d / r.n * 100) + '%"></i></div><b>' + Math.round(r.d / r.n * 100) + "%</b></div>" : '<span class="hint">–</span>') + '</td><td class="num">' + (r.o ? r.od + " / " + r.o : "–") + "</td><td>" + stBadge(evStatus(r.v.id)) + "</td><td>" + (r.last ? esc(new Date(r.last).toLocaleString("az-AZ", { dateStyle: "short", timeStyle: "short" })) : '<span class="hint">başlamayıb</span>') + "</td><td>" +
       (r.d || r.od ? (S.rconf === r.v.id ? '<span class="hint">Bütün qiymətləri silinsin?</span> <button class="btn warn primary small" data-ryes="' + r.v.id + '">Bəli</button> <button class="btn small" data-rno="1">Yox</button>' : '<button class="btn small warn" data-rask="' + r.v.id + '">Sıfırla</button>') : "") + "</td></tr>").join("") + "</tbody></table></div></div>";
-  const depts = [...new Set(EMPS.map(e => e.dept))];
+  const depts = [...new Set(EMPS.map(hrDept))];
   h += '<div class="card"><div class="sec-head"><h3>Departamentlər üzrə</h3></div><div class="tablebox"><table><thead><tr><th>Departament</th><th class="num">İşçi</th><th class="num">Tam</th><th class="num">Yarımçıq</th><th>İrəliləyiş</th></tr></thead><tbody>' +
-    depts.map(d => { const p = per.filter(x => x.e.dept === d && x.n), f = p.filter(x => x.full).length, y = p.filter(x => x.dAll > 0 && !x.full).length, ex = p.reduce((a, x) => a + x.n, 0), dn = p.reduce((a, x) => a + x.dAll, 0), pc = ex ? Math.round(dn / ex * 100) : 0;
+    depts.map(d => { const p = per.filter(x => hrDept(x.e) === d && x.n), f = p.filter(x => x.full).length, y = p.filter(x => x.dAll > 0 && !x.full).length, ex = p.reduce((a, x) => a + x.n, 0), dn = p.reduce((a, x) => a + x.dAll, 0), pc = ex ? Math.round(dn / ex * 100) : 0;
       return p.length ? "<tr><td>" + esc(d) + '</td><td class="num">' + p.length + '</td><td class="num">' + f + '</td><td class="num">' + y + '</td><td><div class="mini"><div class="bar"><i style="width:' + pc + '%"></i></div><b>' + pc + "%</b></div></td></tr>" : ""; }).join("") + "</tbody></table></div></div>";
   el.innerHTML = h;
 }
 function finalOf(p) { if (!p.rs.length) return null; const c = combine(p.rs, p.ws); return { c, t: total(c), x: recommend(c) }; }
 function resultsHTML(per) {
-  const depts = [...new Set(EMPS.map(e => e.dept))], rows = per.filter(p => S.rdept === "all" || p.e.dept === S.rdept);
+  const depts = [...new Set(EMPS.map(hrDept))], rows = per.filter(p => S.rdept === "all" || hrDept(p.e) === S.rdept);
   let h = '<div class="actions"><div class="field" style="min-width:260px"><label for="r-dept">Departament</label><select id="r-dept"><option value="all">Hamısı</option>' + depts.map(d => '<option value="' + esc(d) + '"' + (d === S.rdept ? " selected" : "") + ">" + esc(d) + "</option>").join("") + '</select></div><label style="display:flex;gap:8px;align-items:center;align-self:flex-end"><input type="checkbox" id="r-all"' + (S.showAll ? " checked" : "") + '> Təsdiqlənməmiş qiymətləri də göstər</label><button class="btn primary" data-act="csv" style="align-self:flex-end">Excel üçün yüklə (CSV)</button></div>';
   h += '<div class="card tablebox"><table><thead><tr><th>İşçi</th><th>Struktur bölmə</th><th class="num">1-ci qiymətləndirən</th><th class="num">2-ci qiymətləndirən</th><th class="num">Yekun bal</th><th>Nəticə</th><th></th></tr></thead><tbody>';
   rows.forEach(p => {
