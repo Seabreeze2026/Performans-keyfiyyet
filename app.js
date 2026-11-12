@@ -133,7 +133,7 @@ async function doLogin(id, pin, silent) {
   try {
     const j = await api("login", { ev: id, pin });
     S.ev = id; S.pin = pin; S.admin = false;
-    EMPS = j.emps.map(a => ({ id: a[0], dept: a[1], unit: a[2], name: a[3], pos: a[4], evs: [id], opt: !!a[5], add: !!a[6] }));
+    EMPS = j.emps.map(a => ({ id: a[0], dept: a[1], unit: a[2], name: a[3], pos: a[4], evs: [id], opt: !!a[5], add: !!a[6], q1: !!a[7] }));
     CAT = j.cat || {}; S.addF = null; S.addErr = ""; S.openOther = false;
     loadLoc(); setPeers(j);
     const srv = {}; j.ratings.forEach(r => { srv[r.e] = r; });
@@ -266,13 +266,15 @@ function delCtl(e) {
 function addHTML() {
   const own = myDepts(), f = S.addF || (S.addF = { name: "", pos: "", dept: S.dept, unit: "" });
   if (!own.includes(f.dept)) f.dept = own[0] || "";
-  const units = CAT[f.dept] || [];
+  const isHead = EMPS.some(e => e.dept === f.dept && e.q1), mine = new Set(EMPS.filter(e => e.dept === f.dept && !e.add && !e.q1).map(e => e.unit));
+  const units = (CAT[f.dept] || []).filter(u => isHead || mine.has(u)), noneOk = isHead || mine.has("");
   if (f.unit && !units.includes(f.unit)) f.unit = "";
-  return '<form class="card addform" id="addForm"><h2>İşçi əlavə et</h2><p class="hint" style="margin:0">Siyahıda olmayan əməkdaşı öz departamentinizə əlavə edib eyni qaydada qiymətləndirə bilərsiniz. Bu işçinin qiymətləndirilməsi məcburi hesab olunmur. Departament rəhbəriniz varsa, o da bu işçini «Digər əməkdaşlar» bölməsində görə bilər.</p>' +
+  if (!f.unit && !noneOk) f.unit = units[0] || "";
+  return '<form class="card addform" id="addForm"><h2>İşçi əlavə et</h2><p class="hint" style="margin:0">Siyahıda olmayan əməkdaşı öz departamentinizə əlavə edib eyni qaydada qiymətləndirə bilərsiniz. Bu işçinin qiymətləndirilməsi məcburi hesab olunmur. Departament rəhbəriniz varsa, o da bu işçini «Digər əməkdaşlar» bölməsində görə bilər.' + (EMPS.some(e => e.dept === f.dept && e.q1) ? "" : " Siz yalnız öz şöbənizə əlavə edə bilərsiniz.") + '</p>' +
     '<div class="field"><label for="a-name">Ad, soyad, ata adı</label><input id="a-name" data-af="name" maxlength="90" autocomplete="off" required value="' + esc(f.name) + '"></div>' +
     '<div class="field"><label for="a-pos">Vəzifə</label><input id="a-pos" data-af="pos" maxlength="150" autocomplete="off" required value="' + esc(f.pos) + '"></div>' +
     (own.length > 1 ? '<div class="field"><label for="a-dept">Departament</label><select id="a-dept" data-af="dept">' + own.map(d => '<option value="' + esc(d) + '"' + (d === f.dept ? " selected" : "") + ">" + esc(d) + "</option>").join("") + "</select></div>" : '<div class="field"><label>Departament</label><div><b>' + esc(f.dept) + "</b></div></div>") +
-    '<div class="field"><label for="a-unit">Şöbə</label><select id="a-unit" data-af="unit"><option value="">Şöbəsiz (departamentə birbaşa)</option>' + units.map(u => '<option value="' + esc(u) + '"' + (u === f.unit ? " selected" : "") + ">" + esc(u) + "</option>").join("") + "</select></div>" +
+    '<div class="field"><label for="a-unit">Şöbə</label><select id="a-unit" data-af="unit">' + (noneOk ? '<option value="">Şöbəsiz (departamentə birbaşa)</option>' : "") + units.map(u => '<option value="' + esc(u) + '"' + (u === f.unit ? " selected" : "") + ">" + esc(u) + "</option>").join("") + "</select></div>" +
     (S.addErr ? '<div class="err" role="alert">' + esc(S.addErr) + "</div>" : "") +
     '<div class="actions"><button class="btn primary" type="submit"' + (S.busy ? " disabled" : "") + ">" + (S.busy ? "Əlavə olunur…" : "Əlavə et və qiymətləndir") + '</button><button class="btn" type="button" data-act="add-cancel">Ləğv et</button></div></form>';
 }
@@ -280,7 +282,7 @@ async function addEmp() {
   const f = S.addF; S.addErr = ""; S.busy = true; renderSheet();
   try {
     const j = await api("add_emp", { ev: S.ev, pin: S.pin, name: f.name, pos: f.pos, dept: f.dept, unit: f.unit }), a = j.emp;
-    const e = { id: a[0], dept: a[1], unit: a[2], name: a[3], pos: a[4], evs: [S.ev], opt: false, add: true };
+    const e = { id: a[0], dept: a[1], unit: a[2], name: a[3], pos: a[4], evs: [S.ev], opt: false, add: true, q1: !!a[7] };
     EMPS.push(e); S.addF = null; S.dept = e.dept; S.unit = "all"; S.emp = e.id; S.view = "form"; S.busy = false; render(); window.scrollTo({ top: 0 }); return;
   } catch (err) { S.addErr = err.message; }
   S.busy = false; renderSheet();
@@ -429,7 +431,7 @@ function resultsHTML(per) {
   rows.forEach(p => {
     const sc = p.e.evs.map(v => { const r = RAT[p.e.id + "__" + v]; return validR(r) ? (S.showAll || evStatus(v) === "approved" ? fmt(total(r)) : '<span class="hint">təsdiq gözlənir</span>') : "–"; });
     const f = finalOf(p);
-    h += "<tr><td>" + esc(p.e.name) + (p.e.add ? '<span class="tag">rəhbər əlavə edib</span>' : "") + '<div class="hint">' + esc(p.e.pos) + "</div></td><td>" + esc(p.e.unit || p.e.dept) + '</td><td class="num">' + sc[0] + '</td><td class="num">' + (p.e.evs.length > 1 ? sc[1] : '<span class="hint">yoxdur</span>') + '</td><td class="num"><b>' + (f ? fmt(f.t) : "–") + "</b>" + (f && !p.full ? '<div class="hint">müvəqqəti</div>' : "") + "</td><td>" + (f ? '<span class="verdict ' + f.x.band.tone + '">' + esc(f.x.band.name) + "</span>" : '<span class="hint">gözlənilir</span>') + "</td><td>" + (f ? '<button class="btn small" data-det="' + p.e.id + '">' + (S.det === p.e.id ? "Bağla" : "Bax") + "</button>" : "") + "</td></tr>";
+    h += "<tr><td>" + esc(p.e.name) + (p.e.add ? '<span class="tag">' + (p.e.evs[0] === p.e.add ? "Qiymətləndirən 1" : "Qiymətləndirən 2") + " əlavə edib</span>" : "") + '<div class="hint">' + esc(p.e.pos) + "</div></td><td>" + esc(p.e.unit || p.e.dept) + '</td><td class="num">' + sc[0] + '</td><td class="num">' + (p.e.evs.length > 1 ? sc[1] : '<span class="hint">yoxdur</span>') + '</td><td class="num"><b>' + (f ? fmt(f.t) : "–") + "</b>" + (f && !p.full ? '<div class="hint">müvəqqəti</div>' : "") + "</td><td>" + (f ? '<span class="verdict ' + f.x.band.tone + '">' + esc(f.x.band.name) + "</span>" : '<span class="hint">gözlənilir</span>') + "</td><td>" + (f ? '<button class="btn small" data-det="' + p.e.id + '">' + (S.det === p.e.id ? "Bağla" : "Bax") + "</button>" : "") + "</td></tr>";
     if (f && S.det === p.e.id) h += '<tr><td colspan="7" style="background:var(--bg,#f6f8fb)">' + detailHTML(p, f) + "</td></tr>";
   });
   return h + "</tbody></table></div>";
