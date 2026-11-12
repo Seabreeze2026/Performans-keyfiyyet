@@ -78,11 +78,12 @@ const exClean = r => exOf(r).map(o => (o && o.t && o.t.trim() && o.v >= 1 && o.v
 function exHTML(x, title) {
   const l = (x || []).map((o, i) => ({ o, i })).filter(a => a.o && a.o.t && String(a.o.t).trim() && a.o.v);
   if (!l.length) return "";
-  return '<div class="card pad"><div class="hint">' + esc(title || "Əlavə meyarlar (yekun bala daxil deyil)") + "</div>" + l.map(a => '<div class="xres s' + a.i + '"><span class="hint">' + esc(SECTIONS[a.i].short) + ":</span> " + esc(a.o.t) + " · <b>" + a.o.v + " / 10</b></div>").join("") + "</div>";
+  return '<div class="card pad"><div class="hint">' + esc(title || "Əlavə meyarlar (yekun bala daxil edilib)") + "</div>" + l.map(a => '<div class="xres s' + a.i + '"><span class="hint">' + esc(SECTIONS[a.i].short) + ":</span> " + esc(a.o.t) + " · <b>" + a.o.v + " / 10</b></div>").join("") + "</div>";
 }
 const grp = e => e.add ? "add" : e.opt ? "opt" : "main";
 const filled = r => r.s.reduce((a, sec) => a + sec.filter(x => x != null).length, 0);
-const secAvgs = r => r.s.map(avg);
+const xv = r => { const x = r && (r.extra || r.x); return [0, 1, 2].map(i => (x && x[i] && x[i].t && String(x[i].t).trim() && x[i].v >= 1 && x[i].v <= 10) ? x[i].v : null); };
+const secAvgs = r => r.s.map((sec, i) => avg(sec.concat([xv(r)[i]]))); // əlavə meyar varsa bölmənin ortasına daxildir
 const W = [0.4, 0.4, 0.2], EVW = [0.6, 0.4]; // istiqamət çəkiləri: 40/40/20; qiymətləndirən çəkiləri: 60/40
 function total(r) { const a = secAvgs(r); return a.some(x => x == null) ? null : a.reduce((t, v, i) => t + v * W[i], 0) * 10; }
 const tone = v => v >= 80 ? "good" : v >= 65 ? "mid" : "low";
@@ -119,7 +120,7 @@ function recommend(r) {
   if (t < 60) out.push("Yekun bal 60-dan aşağıdır. Fərdi inkişaf planı hazırlanmalı və 3 ay sonra təkrar qiymətləndirmə aparılmalıdır.");
   return { band: b, items: out, t, a };
 }
-const combine = (list, ws) => { const w = ws || list.map(() => 1); return { s: SECTIONS.map((sec, i) => sec.criteria.map((_, j) => { let t = 0, sw = 0; list.forEach((r, k) => { t += r.s[i][j] * w[k]; sw += w[k]; }); return sw ? t / sw : null; })) }; };
+const combine = (list, ws) => { const w = ws || list.map(() => 1); return { extra: [0, 1, 2].map(i => { let t = 0, sw = 0; list.forEach((r, k) => { const v = xv(r)[i]; if (v != null) { t += v * w[k]; sw += w[k]; } }); return sw ? { t: "x", v: t / sw } : { t: "", v: null }; }), s: SECTIONS.map((sec, i) => sec.criteria.map((_, j) => { let t = 0, sw = 0; list.forEach((r, k) => { t += r.s[i][j] * w[k]; sw += w[k]; }); return sw ? t / sw : null; })) }; };
 const validR = r => r && r.done && Array.isArray(r.s) && r.s.length === 3 && r.s.every((x, i) => Array.isArray(x) && x.length === SECTIONS[i].criteria.length && x.every(v => Number.isInteger(v) && v >= 1 && v <= 10));
 
 /* ---------- RƏHBƏR: giriş və sinxronlaşma ---------- */
@@ -237,7 +238,7 @@ function renderSheet() {
   if (S.view === "result") { dock.hidden = true; el.innerHTML = resultHTML(e, r); return; }
   let h = '<div class="card who"><h2>' + esc(e.name) + "</h2>" + cell("Vəzifə", e.pos) + cell("Struktur bölmə", e.dept + (e.unit ? " · " + e.unit : "")) + (filled(r) ? resetCtl(e.id, "Bu işçinin qiymətlərini sıfırla") : "") + delCtl(e) + "</div>";
   SECTIONS.forEach((s, i) => {
-    h += '<div class="card sx s' + i + '"><div class="sec-head"><h3>' + esc(s.title) + '</h3><span class="sec-avg" data-avg="' + i + '">Orta: ' + fmt(avg(r.s[i])) + "</span></div>";
+    h += '<div class="card sx s' + i + '"><div class="sec-head"><h3>' + esc(s.title) + '</h3><span class="sec-avg" data-avg="' + i + '">Orta: ' + fmt(secAvgs(r)[i]) + "</span></div>";
     s.criteria.forEach((c, j) => {
       h += '<div class="crit"><div class="t">' + esc(c) + '</div><fieldset class="scale"><legend>' + esc(c) + " (10 üzərindən)</legend>";
       for (let v = 1; v <= 10; v++) { const id = "r" + i + "-" + j + "-" + v; h += '<input type="radio" name="r' + i + "-" + j + '" id="' + id + '" data-s="' + i + '" data-c="' + j + '" value="' + v + '"' + (r.s[i][j] === v ? " checked" : "") + '><label for="' + id + '">' + v + "</label>"; }
@@ -246,7 +247,7 @@ function renderSheet() {
     const xo = exOf(r)[i];
     h += '<div class="crit xcrit" data-xc="' + i + '"><div class="field"><label for="xt' + i + '">Əlavə meyar (varsa)</label><input id="xt' + i + '" type="text" maxlength="150" data-xt="' + i + '" autocomplete="off" placeholder="Siyahıda olmayan meyarı yazın, sonra 1-dən 10-a bal seçin" value="' + esc(xo.t) + '"></div><fieldset class="scale"><legend>Əlavə meyar (10 üzərindən)</legend>';
     for (let v = 1; v <= 10; v++) { const id = "x" + i + "-" + v; h += '<input type="radio" name="xr' + i + '" id="' + id + '" data-xs="' + i + '" value="' + v + '"' + (xo.v === v ? " checked" : "") + '><label for="' + id + '">' + v + "</label>"; }
-    h += '</fieldset><div class="hint">Əlavə meyar yekun bala daxil edilmir, nəticədə ayrıca göstərilir.</div></div>';
+    h += '</fieldset><div class="hint">Əlavə meyarın balı bölmənin ortasına və yekun bala daxil edilir.</div></div>';
     h += '<div class="note"><div class="field"><label for="n' + i + '">Digər qeydlər (varsa)</label><textarea id="n' + i + '" data-note="' + i + '">' + esc(r.notes[i]) + "</textarea></div></div></div>";
   });
   el.innerHTML = h; updateDock();
@@ -314,7 +315,7 @@ function resultHTML(e, r) {
 function peerCard(e) {
   const p = PEER[e.id]; if (!p || !validR(p)) return "";
   let h = '<div class="card"><div class="sec-head"><h3>Qiymətləndirən 2-nin qiymətləndirməsi</h3></div><div class="pad"><div class="hint">' + esc(p.vn) + '</div><div class="secbars">';
-  SECTIONS.forEach((sec, i) => { const a = avg(p.s[i]); h += '<div class="r s' + i + '"><span>' + esc(sec.title) + "</span><b>" + fmt(a) + '</b><div class="bar"><i style="width:' + a * 10 + '%"></i></div></div>'; });
+  SECTIONS.forEach((sec, i) => { const a = secAvgs(p)[i]; h += '<div class="r s' + i + '"><span>' + esc(sec.title) + "</span><b>" + fmt(a) + '</b><div class="bar"><i style="width:' + a * 10 + '%"></i></div></div>'; });
   h += "</div><p><b>Bal: " + fmt(total(p)) + " / 100</b></p>";
   p.n.forEach((t, i) => { if (t && String(t).trim()) h += '<div class="hint">' + esc(SECTIONS[i].short) + " üzrə qeyd</div>" + esc(t); });
   h += "</div></div>";
@@ -435,14 +436,14 @@ function detailHTML(p, f) {
   SECTIONS.forEach((sec, i) => {
     h += '<tr class="s' + i + '"><td colspan="' + (cols.length + 2) + '"><b>' + esc(sec.title) + " (" + Math.round(W[i] * 100) + "%)</b></td></tr>";
     sec.criteria.forEach((cr, j) => { h += "<tr><td>" + esc(cr) + "</td>" + cols.map(c => '<td class="num">' + (c.ok ? c.r.s[i][j] : "–") + "</td>").join("") + '<td class="num"><b>' + fmt(f.c.s[i][j]) + "</b></td></tr>"; });
-    h += '<tr><td><i>Orta</i></td>' + cols.map(c => '<td class="num">' + (c.ok ? fmt(avg(c.r.s[i])) : "–") + "</td>").join("") + '<td class="num"><b>' + fmt(avg(f.c.s[i])) + "</b></td></tr>";
+    h += '<tr><td><i>Orta</i></td>' + cols.map(c => '<td class="num">' + (c.ok ? fmt(secAvgs(c.r)[i]) : "–") + "</td>").join("") + '<td class="num"><b>' + fmt(secAvgs(f.c)[i]) + "</b></td></tr>";
   });
   h += '<tr><td><b>Bal / 100</b></td>' + cols.map(c => '<td class="num"><b>' + (c.ok ? fmt(total(c.r)) : "–") + "</b></td>").join("") + '<td class="num"><b>' + fmt(f.t) + "</b></td></tr></tbody></table></div>";
   const notes = [];
   cols.forEach(c => { if (c.ok && c.r.n) c.r.n.forEach((t, i) => { if (t && String(t).trim()) notes.push("<li><b>" + esc(EV(c.v).name) + "</b> · " + esc(SECTIONS[i].short) + ": " + esc(t) + "</li>"); }); });
   const xs = [];
   cols.forEach(c => { if (c.ok && Array.isArray(c.r.x)) c.r.x.forEach((o, i) => { if (o && o.t && String(o.t).trim() && o.v) xs.push("<li><b>" + esc(EV(c.v).name) + "</b> · " + esc(SECTIONS[i].short) + ": " + esc(o.t) + " · <b>" + o.v + " / 10</b></li>"); }); });
-  if (xs.length) h += '<div class="pad"><b>Əlavə meyarlar (yekun bala daxil deyil)</b><ul class="recs">' + xs.join("") + "</ul></div>";
+  if (xs.length) h += '<div class="pad"><b>Əlavə meyarlar (yekun bala daxil edilib)</b><ul class="recs">' + xs.join("") + "</ul></div>";
   if (notes.length) h += '<div class="pad"><b>Qeydlər</b><ul class="recs">' + notes.join("") + "</ul></div>";
   h += '<div class="pad"><b>Tövsiyələr</b><ul class="recs">' + f.x.items.map(t => "<li>" + esc(t) + "</li>").join("") + "</ul></div>";
   return h;
