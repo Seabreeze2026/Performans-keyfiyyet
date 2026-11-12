@@ -175,13 +175,32 @@ tr:last-child td { border-bottom: 0; }
 .sync { font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 99px; }
 @media (prefers-reduced-motion: no-preference) { .bar > i { transition: width .25s; } }
 
+/* v6: eye-catching results button, groups, extra criterion, add form */
+.btn.hot { background: linear-gradient(135deg, #ffd23f, #ff9f1c); color: #3b1d00; border: 2px solid #c77700; font-size: 18px; font-weight: 800; padding: 9px 20px; box-shadow: 0 3px 12px rgba(255,159,28,.55); letter-spacing: .2px; }
+.btn.hot:hover { border-color: #8a5200; filter: brightness(1.05); }
+.btn.hot .badge { display: inline-block; background: rgba(59,29,0,.14); border-radius: 99px; padding: 1px 10px; margin-left: 8px; font-size: 15px; font-variant-numeric: tabular-nums; }
+.grp-title { padding: 10px 14px; background: #f1f8fa; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); }
+.grp-toggle { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; border: 0; border-top: 1px solid var(--line); background: #fff7e3; padding: 13px 14px; font-weight: 700; font-size: 14px; }
+.grp-toggle:hover { background: #ffefc2; }
+.grp-toggle .cnt { margin-left: auto; font-size: 12px; background: #fff; border: 1px solid #e8cf8a; border-radius: 99px; padding: 2px 9px; font-variant-numeric: tabular-nums; }
+.grp-toggle .chev { transition: transform .15s; }
+.grp-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
+.grp-hint { padding: 10px 14px; font-size: 13px; color: var(--muted); background: #fffbf0; border-bottom: 1px solid var(--line); margin: 0; }
+.grp-empty { padding: 12px 14px; color: var(--muted); font-size: 13px; }
+.tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 99px; background: #fff0c9; color: #7a4b00; margin-left: 6px; vertical-align: middle; }
+.xcrit { background: rgba(255,255,255,.55); border-top: 2px dashed var(--sc-line); }
+.xcrit .t { font-weight: 700; color: var(--sc); }
+.xcrit .hint { margin-top: -4px; }
+.xres { padding: 10px 12px; border-radius: 8px; background: var(--sc-soft); }
+.addform { padding: 18px; display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
+
 .dock[hidden] { display: none; }
 </style>
 </head>
 <body>
 <div id="app"><p style="padding:24px">Yüklənir…</p></div>
 <div class="dock" id="dock" hidden></div>
-<script src="config.js?v=5"></script>
-<script src="app.js?v=5"></script>
+<script src="config.js?v=6"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>
