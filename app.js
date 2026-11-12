@@ -75,7 +75,7 @@ const blank = () => ({ s: SECTIONS.map(s => s.criteria.map(() => null)), notes: 
 function rec(id) { if (!LOC.ratings[id]) LOC.ratings[id] = blank(); const r = LOC.ratings[id]; r.extra = nx(r.extra); return r; }
 const exOf = r => nx(r && (r.extra || r.x));
 const okX = o => o && o.t && o.t.trim() && o.v >= 1 && o.v <= 10;
-function exMissing(r) { const x = exOf(r); for (let i = 0; i < 3; i++) for (let k = 0; k < x[i].length; k++) if (x[i][k].t.trim() && !(x[i][k].v >= 1 && x[i][k].v <= 10)) return { i, k }; return null; }
+function exMissing(r) { const x = exOf(r); for (let i = 0; i < 3; i++) for (let k = 0; k < x[i].length; k++) if (!okX(x[i][k])) return { i, k }; return null; }
 const exClean = r => exOf(r).map(l => l.filter(okX).slice(0, 10).map(o => ({ t: o.t.trim().slice(0, 150), v: o.v })));
 function exHTML(x, title) {
   const l = []; nx(x).forEach((arr, i) => arr.forEach(o => { if (okX(o)) l.push({ o, i }); }));
@@ -83,7 +83,8 @@ function exHTML(x, title) {
   return '<div class="card pad"><div class="hint">' + esc(title || "Əlavə meyarlar (yekun bala daxil edilib)") + "</div>" + l.map(a => '<div class="xres s' + a.i + '"><span class="hint">' + esc(SECTIONS[a.i].short) + ":</span> " + esc(a.o.t) + " · <b>" + a.o.v + " / 10</b></div>").join("") + "</div>";
 }
 const grp = e => e.add ? "add" : e.opt ? "opt" : "main";
-const filled = r => r.s.reduce((a, sec) => a + sec.filter(x => x != null).length, 0);
+const filled = r => r.s.reduce((a, sec) => a + sec.filter(x => x != null).length, 0) + exOf(r).reduce((a, l) => a + l.filter(okX).length, 0);
+const totC = r => TOTAL_CRIT + exOf(r).reduce((a, l) => a + l.length, 0); // əlavə meyarlar da say-a daxildir
 const xv = r => exOf(r).map(l => l.filter(okX).map(o => o.v));
 const secAvgs = r => r.sa ? r.sa : r.s.map((sec, i) => avg(sec.concat(xv(r)[i]))); // əlavə meyarlar bölmənin ortasına əlavə meyar kimi daxildir
 const W = [0.4, 0.4, 0.2], EVW = [0.6, 0.4]; // istiqamət çəkiləri: 40/40/20; qiymətləndirən çəkiləri: 60/40
@@ -198,7 +199,7 @@ function render() {
 }
 function empLi(e) {
   const r = rec(e.id), ok = validR(r), t = ok ? total(r) : null, n = filled(r);
-  return '<li><button class="emp" data-emp="' + e.id + '"' + (e.id === S.emp && S.view !== "mine" && S.view !== "add" ? ' aria-current="true"' : "") + '><span class="n">' + esc(e.name) + '</span><span class="p">' + esc(e.pos) + (e.unit && S.unit === "all" ? " · " + esc(e.unit) : "") + '</span><span class="st ' + (ok ? tone(t) : "") + '">' + (ok ? fmt(t, 0) + (r.synced ? "" : " •") : n ? n + "/" + TOTAL_CRIT : "gözləyir") + "</span></button></li>";
+  return '<li><button class="emp" data-emp="' + e.id + '"' + (e.id === S.emp && S.view !== "mine" && S.view !== "add" ? ' aria-current="true"' : "") + '><span class="n">' + esc(e.name) + '</span><span class="p">' + esc(e.pos) + (e.unit && S.unit === "all" ? " · " + esc(e.unit) : "") + '</span><span class="st ' + (ok ? tone(t) : "") + '">' + (ok ? fmt(t, 0) + (r.synced ? "" : " •") : n ? n + "/" + totC(r) : "gözləyir") + "</span></button></li>";
 }
 function queueHTML() {
   const list = scoped(), by = g => list.filter(e => grp(e) === g), main = by("main"), add = by("add"), opt = by("opt");
@@ -252,7 +253,7 @@ function renderSheet() {
       for (let v = 1; v <= 10; v++) { const id = "x" + i + "-" + k + "-" + v; h += '<input type="radio" name="xr' + i + "-" + k + '" id="' + id + '" data-xs="' + i + '" data-xk="' + k + '" value="' + v + '"' + (xo.v === v ? " checked" : "") + '><label for="' + id + '">' + v + "</label>"; }
       h += "</fieldset></div>";
     });
-    h += '<div class="xadd"><button class="btn small" data-act="xadd" data-i="' + i + '">+ Əlavə meyar əlavə et</button><span class="hint">Əlavə meyarın balı bölmənin ortasına və yekun bala daxil edilir.</span></div>';
+    h += '<div class="xadd"><button class="btn small" data-act="xadd" data-i="' + i + '">+ Əlavə meyar əlavə et</button><span class="hint">Əlavə meyar qiymətləndirməyə digər meyarlar kimi eyni dərəcədə təsir edəcək.</span></div>';
     h += '<div class="note"><div class="field"><label for="n' + i + '">Digər qeydlər (varsa)</label><textarea id="n' + i + '" data-note="' + i + '">' + esc(r.notes[i]) + "</textarea></div></div></div>";
   });
   el.innerHTML = h; updateDock();
@@ -267,7 +268,7 @@ function addHTML() {
   if (!own.includes(f.dept)) f.dept = own[0] || "";
   const units = CAT[f.dept] || [];
   if (f.unit && !units.includes(f.unit)) f.unit = "";
-  return '<form class="card addform" id="addForm"><h2>İşçi əlavə et</h2><p class="hint" style="margin:0">Siyahıda olmayan əməkdaşı öz departamentinizə əlavə edib eyni qaydada qiymətləndirə bilərsiniz. Əlavə etdiyiniz işçini yalnız siz görürsünüz və qiymətləndirməsi məcburi hesab olunmur.</p>' +
+  return '<form class="card addform" id="addForm"><h2>İşçi əlavə et</h2><p class="hint" style="margin:0">Siyahıda olmayan əməkdaşı öz departamentinizə əlavə edib eyni qaydada qiymətləndirə bilərsiniz. Bu işçinin qiymətləndirilməsi məcburi hesab olunmur. Departament rəhbəriniz varsa, o da bu işçini «Digər əməkdaşlar» bölməsində görə bilər.</p>' +
     '<div class="field"><label for="a-name">Ad, soyad, ata adı</label><input id="a-name" data-af="name" maxlength="90" autocomplete="off" required value="' + esc(f.name) + '"></div>' +
     '<div class="field"><label for="a-pos">Vəzifə</label><input id="a-pos" data-af="pos" maxlength="150" autocomplete="off" required value="' + esc(f.pos) + '"></div>' +
     (own.length > 1 ? '<div class="field"><label for="a-dept">Departament</label><select id="a-dept" data-af="dept">' + own.map(d => '<option value="' + esc(d) + '"' + (d === f.dept ? " selected" : "") + ">" + esc(d) + "</option>").join("") + "</select></div>" : '<div class="field"><label>Departament</label><div><b>' + esc(f.dept) + "</b></div></div>") +
@@ -298,7 +299,7 @@ function updateDock() {
   const r = rec(e.id), n = filled(r), list = scoped(), gl = sameGrp(e), last = gl.findIndex(x => x.id === e.id) === gl.length - 1, xm = exMissing(r);
   const a = secAvgs(r), t = a.every(x => x != null) ? total(r) : null, dock = $("dock");
   dock.hidden = false;
-  dock.innerHTML = '<div class="dock-in"><div class="live"><span>Dolduruldu <b>' + n + " / " + TOTAL_CRIT + "</b></span><span>Cari bal <b>" + (t == null ? "–" : fmt(t)) + '</b> / 100</span></div><button class="btn primary" data-act="' + (n < TOTAL_CRIT ? "gap" : xm ? "xgap" : "save") + '">' + (n < TOTAL_CRIT ? "Boş qalan meyara keç (" + (TOTAL_CRIT - n) + ")" : xm ? "Əlavə meyar üçün bal seçin" : last ? "Saxla və nəticəyə bax" : "Saxla və növbəti işçiyə keç") + "</button></div>";
+  dock.innerHTML = '<div class="dock-in"><div class="live"><span>Dolduruldu <b>' + n + " / " + totC(r) + "</b></span><span>Cari bal <b>" + (t == null ? "–" : fmt(t)) + '</b> / 100</span></div><button class="btn primary" data-act="' + (n < totC(r) ? "gap" : xm ? "xgap" : "save") + '">' + (n < totC(r) ? "Boş qalan meyara keç (" + (totC(r) - n) + ")" : xm ? "Əlavə meyar üçün bal seçin" : last ? "Saxla və nəticəyə bax" : "Saxla və növbəti işçiyə keç") + "</button></div>";
   SECTIONS.forEach((s, i) => { const x = document.querySelector('[data-avg="' + i + '"]'); if (x) x.textContent = "Orta: " + fmt(a[i]); });
 }
 function resultBlock(r) {
@@ -511,7 +512,7 @@ document.addEventListener("click", async ev => {
   else if (act === "reset-no") { S.confirm = ""; renderSheet(); }
   else if (act === "reset-yes") doReset(b.dataset.id);
   else if (b.dataset.emp) { const e = EMP(b.dataset.emp); S.dept = e.dept; S.unit = "all"; S.emp = e.id; S.view = validR(rec(e.id)) ? "result" : "form"; render(); window.scrollTo({ top: 0 }); }
-  else if (act === "gap") { const r = rec(curEmp().id); for (let i = 0; i < r.s.length; i++) for (let j = 0; j < r.s[i].length; j++) if (r.s[i][j] == null) { const c = document.querySelector('input[name="r' + i + "-" + j + '"]').closest(".crit"); document.querySelectorAll(".crit.gap").forEach(x => x.classList.remove("gap")); c.classList.add("gap"); c.scrollIntoView({ behavior: "smooth", block: "center" }); return; } }
+  else if (act === "gap") { const r = rec(curEmp().id); for (let i = 0; i < r.s.length; i++) for (let j = 0; j < r.s[i].length; j++) if (r.s[i][j] == null) { const c = document.querySelector('input[name="r' + i + "-" + j + '"]').closest(".crit"); document.querySelectorAll(".crit.gap").forEach(x => x.classList.remove("gap")); c.classList.add("gap"); c.scrollIntoView({ behavior: "smooth", block: "center" }); return; } const m = exMissing(r); const c = m && document.querySelector('[data-xc="' + m.i + "-" + m.k + '"]'); if (c) { document.querySelectorAll(".crit.gap").forEach(x => x.classList.remove("gap")); c.classList.add("gap"); c.scrollIntoView({ behavior: "smooth", block: "center" }); } }
   else if (act === "xgap") { const m = exMissing(rec(curEmp().id)); const c = m && document.querySelector('[data-xc="' + m.i + "-" + m.k + '"]'); if (c) { document.querySelectorAll(".crit.gap").forEach(x => x.classList.remove("gap")); c.classList.add("gap"); c.scrollIntoView({ behavior: "smooth", block: "center" }); } }
   else if (act === "xadd") { const r = rec(curEmp().id), i = +b.dataset.i; if (r.extra[i].length >= 10) return; r.extra[i].push({ t: "", v: null }); r.done = false; r.synced = false; saveLoc(); renderSheet(); const el = $("xt" + i + "-" + (r.extra[i].length - 1)); if (el) { el.focus(); el.scrollIntoView({ block: "center" }); } }
   else if (act === "xdel") { const r = rec(curEmp().id); r.extra[+b.dataset.i].splice(+b.dataset.k, 1); r.done = false; r.synced = false; saveLoc(); renderSheet(); }
