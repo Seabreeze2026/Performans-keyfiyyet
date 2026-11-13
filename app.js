@@ -224,12 +224,12 @@ function queueHTML() {
   const list = scoped(), by = g => list.filter(e => grp(e) === g), main = by("main"), add = by("add"), opt = by("opt");
   const dn = a => a.filter(e => validR(rec(e.id))).length, pct = main.length ? Math.round(dn(main) / main.length * 100) : 0;
   let h = '<aside class="card queue"><div class="queue-head"><div class="row"><span>Əsas əməkdaşlar</span><b>' + dn(main) + " / " + main.length + '</b></div><div class="bar"><i style="width:' + pct + '%"></i></div></div><ul class="emp-list">';
-  h += main.length ? main.map(empLi).join("") : '<li class="grp-empty">Bu bölmədə əsas əməkdaş yoxdur.</li>';
+  h += main.length ? main.map(e => empLi(e)).join("") : '<li class="grp-empty">Bu bölmədə əsas əməkdaş yoxdur.</li>';
   h += "</ul>";
-  if (add.length) h += '<div class="grp-title">Əlavə etdiyim əməkdaşlar (' + dn(add) + " / " + add.length + ')</div><ul class="emp-list">' + add.map(empLi).join("") + "</ul>";
+  if (add.length) h += '<div class="grp-title">Əlavə etdiyim əməkdaşlar (' + dn(add) + " / " + add.length + ')</div><ul class="emp-list">' + add.map(e => empLi(e)).join("") + "</ul>";
   if (opt.length) {
     h += '<button class="grp-toggle" data-act="toggle-other" aria-expanded="' + !!S.openOther + '"><span>Digər əməkdaşlar</span><span class="cnt">' + dn(opt) + " / " + opt.length + '</span><span class="chev" aria-hidden="true">▾</span></button>';
-    if (S.openOther) h += '<p class="grp-hint">Bu əməkdaşları Qiymətləndirən 2 də qiymətləndirir. Sizin üçün qiymətləndirmək məcburi deyil, istəsəniz qiymətləndirə bilərsiniz.</p><ul class="emp-list">' + opt.map(empLi).join("") + "</ul>";
+    if (S.openOther) h += '<p class="grp-hint">Bu əməkdaşları Qiymətləndirən 2 də qiymətləndirir. Sizin üçün qiymətləndirmək məcburi deyil, istəsəniz qiymətləndirə bilərsiniz.</p><ul class="emp-list">' + opt.map(e => empLi(e)).join("") + "</ul>";
   }
   return h + '<div class="queue-foot"><button class="btn block" data-act="add-open">+ İşçi əlavə et</button></div></aside>';
 }
