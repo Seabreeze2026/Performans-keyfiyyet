@@ -186,6 +186,22 @@ tr:last-child td { border-bottom: 0; }
 .grp-toggle .chev { transition: transform .15s; }
 .grp-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
 .grp-hint { padding: 10px 14px; font-size: 13px; color: var(--muted); background: #fffbf0; border-bottom: 1px solid var(--line); margin: 0; }
+.qscroll { max-height: 62vh; overflow-y: auto; }
+.qscroll .emp-list { max-height: none; overflow: visible; }
+.unit-toggle { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; border: 0; border-top: 1px solid var(--line); background: #eaf4f8; padding: 13px 14px; font-weight: 700; font-size: 14px; }
+.unit-toggle:hover { background: #dcedf4; }
+.unit-toggle .un { flex: 1; overflow-wrap: anywhere; }
+.unit-toggle .cnt { font-size: 12px; background: #fff; border: 1px solid var(--line); border-radius: 99px; padding: 2px 9px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.unit-toggle .cnt.must { background: #fff4d6; border-color: #e8cf8a; color: #7a4b00; }
+.unit-toggle .chev { transition: transform .15s; }
+.unit-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
+.emp.must { background: #fff4d6; box-shadow: inset 4px 0 0 #e8a93e; }
+.emp.must:hover { background: #ffeab8; }
+.emp.must[aria-current="true"] { background: #ffe7ab; box-shadow: inset 4px 0 0 var(--accent), inset 8px 0 0 #e8a93e; }
+.must-sw { display: flex; align-items: center; gap: 9px; font-size: 13.5px; font-weight: 600; cursor: pointer; padding-top: 4px; }
+.must-sw input { width: 18px; height: 18px; accent-color: #e8a93e; }
+.must-key { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12px; color: var(--muted); }
+.must-key i { width: 14px; height: 14px; border-radius: 4px; background: #fff4d6; border: 2px solid #e8a93e; flex: none; }
 .grp-empty { padding: 12px 14px; color: var(--muted); font-size: 13px; }
 .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 99px; background: #fff0c9; color: #7a4b00; margin-left: 6px; vertical-align: middle; }
 .xcrit { background: rgba(255,255,255,.55); border-top: 2px dashed var(--sc-line); }
@@ -201,7 +217,7 @@ tr:last-child td { border-bottom: 0; }
 <body>
 <div id="app"><p style="padding:24px">Yüklənir…</p></div>
 <div class="dock" id="dock" hidden></div>
-<script src="config.js?v=11"></script>
-<script src="app.js?v=11"></script>
+<script src="config.js?v=12"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>

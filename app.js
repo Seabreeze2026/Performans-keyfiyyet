@@ -191,6 +191,7 @@ function render() {
   const list = scoped();
   if (!list.find(e => e.id === S.emp)) S.emp = list[0] ? list[0].id : null;
   const ce = curEmp(); if (ce && grp(ce) === "opt" && S.view !== "add") S.openOther = true;
+  if (ce && ce.unit && S.view !== "add") (S.openU || (S.openU = {}))[ce.unit] = true;
   const rq = reqEmps(), doneAll = rq.filter(e => validR(rec(e.id))).length;
   let h = head('<div class="who-bar"><span>Qiymətləndirən: <span class="nm">' + esc(EV(S.ev) ? EV(S.ev).name : "") + '</span></span><button class="btn hot" data-act="mine">Nəticələrim<span class="badge">' + doneAll + "/" + rq.length + '</span></button><button class="btn small" data-act="logout">Çıxış</button></div>');
   h += '<div class="wrap"><div class="card filters"><div class="field"><label for="f-dept">Departament</label><select id="f-dept">' + depts.map(d => '<option value="' + esc(d) + '"' + (d === S.dept ? " selected" : "") + ">" + esc(d) + "</option>").join("") + "</select></div>";
@@ -198,11 +199,28 @@ function render() {
   h += '</div><div class="main">' + queueHTML() + '<section class="sheet" id="sheet"></section></div></div>';
   $("app").innerHTML = h; renderSheet();
 }
-function empLi(e) {
-  const r = rec(e.id), ok = validR(r), t = ok ? total(r) : null, n = filled(r);
-  return '<li><button class="emp" data-emp="' + e.id + '"' + (e.id === S.emp && S.view !== "mine" && S.view !== "add" ? ' aria-current="true"' : "") + '><span class="n">' + esc(e.name) + '</span><span class="p">' + esc(e.pos) + (e.unit && S.unit === "all" ? " · " + esc(e.unit) : "") + '</span><span class="st ' + (ok ? tone(t) : "") + '">' + (ok ? fmt(t, 0) + (r.synced ? "" : " •") : n ? n + "/" + totC(r) : "gözləyir") + "</span></button></li>";
+function empLi(e, gm) {
+  const r = rec(e.id), ok = validR(r), t = ok ? total(r) : null, n = filled(r), must = gm && grp(e) === "main";
+  return '<li><button class="emp' + (must ? " must" : "") + '" data-emp="' + e.id + '"' + (e.id === S.emp && S.view !== "mine" && S.view !== "add" ? ' aria-current="true"' : "") + '><span class="n">' + esc(e.name) + '</span><span class="p">' + esc(e.pos) + (!gm && e.unit && S.unit === "all" ? " · " + esc(e.unit) : "") + '</span><span class="st ' + (ok ? tone(t) : "") + '">' + (ok ? fmt(t, 0) + (r.synced ? "" : " •") : n ? n + "/" + totC(r) : "gözləyir") + "</span></button></li>";
+}
+const isGrouped = () => { const all = EMPS.filter(e => e.dept === S.dept), us = new Set(all.map(e => e.unit).filter(Boolean)); return us.size > 1 || (us.size >= 1 && all.some(e => !e.unit)); };
+function groupedQueue(list) {
+  const main = list.filter(e => grp(e) === "main"), dn = a => a.filter(e => validR(rec(e.id))).length, pct = main.length ? Math.round(dn(main) / main.length * 100) : 0;
+  const vis = S.mustOnly ? list.filter(e => grp(e) === "main") : list, ou = S.openU || (S.openU = {});
+  let h = '<aside class="card queue"><div class="queue-head"><div class="row"><span>Əsas əməkdaşlar</span><b>' + dn(main) + " / " + main.length + '</b></div><div class="bar"><i style="width:' + pct + '%"></i></div>' +
+    '<label class="must-sw"><input type="checkbox" id="f-must"' + (S.mustOnly ? " checked" : "") + '><span>Yalnız məcburi qiymətləndirəcəklərim</span></label><p class="must-key"><i></i> Sarı rənglə qeyd olunanları siz qiymətləndirməlisiniz</p></div><div class="qscroll">';
+  const direct = vis.filter(e => !e.unit), units = [...new Set(vis.filter(e => e.unit).map(e => e.unit))];
+  if (direct.length) h += (units.length ? '<div class="grp-title">Birbaşa tabe olan əməkdaşlar</div>' : "") + '<ul class="emp-list">' + direct.map(e => empLi(e, true)).join("") + "</ul>";
+  units.forEach(u => {
+    const us = vis.filter(e => e.unit === u), um = us.filter(e => grp(e) === "main"), open = S.mustOnly || !!ou[u];
+    h += '<button class="unit-toggle" data-act="toggle-unit" data-u="' + esc(u) + '" aria-expanded="' + open + '"><span class="un">' + esc(u) + '</span><span class="cnt' + (um.length ? " must" : "") + '" title="' + (um.length ? "Məcburi: " + dn(um) + " / " + um.length + ", cəmi " : "Cəmi ") + us.length + ' əməkdaş">' + (um.length ? dn(um) + " / " + um.length : us.length) + '</span><span class="chev" aria-hidden="true">▾</span></button>';
+    if (open) h += '<ul class="emp-list">' + us.map(e => empLi(e, true)).join("") + "</ul>";
+  });
+  if (!vis.length) h += '<p class="grp-empty">Bu bölmədə məcburi qiymətləndirəcəyiniz əməkdaş yoxdur.</p>';
+  return h + '</div><div class="queue-foot"><button class="btn block" data-act="add-open">+ İşçi əlavə et</button></div></aside>';
 }
 function queueHTML() {
+  if (isGrouped()) return groupedQueue(scoped());
   const list = scoped(), by = g => list.filter(e => grp(e) === g), main = by("main"), add = by("add"), opt = by("opt");
   const dn = a => a.filter(e => validR(rec(e.id))).length, pct = main.length ? Math.round(dn(main) / main.length * 100) : 0;
   let h = '<aside class="card queue"><div class="queue-head"><div class="row"><span>Əsas əməkdaşlar</span><b>' + dn(main) + " / " + main.length + '</b></div><div class="bar"><i style="width:' + pct + '%"></i></div></div><ul class="emp-list">';
@@ -483,6 +501,7 @@ document.addEventListener("change", ev => {
   const t = ev.target;
   if (t.id === "f-dept") { S.dept = t.value; S.unit = "all"; S.emp = null; S.view = "form"; render(); }
   else if (t.id === "f-unit") { S.unit = t.value; S.emp = null; S.view = "form"; render(); }
+  else if (t.id === "f-must") { S.mustOnly = t.checked; render_queueOnly(); }
   else if (t.id === "r-all") { S.showAll = t.checked; adminBody(); }
   else if (t.id === "r-dept") { S.rdept = t.value; adminBody(); }
   else if (t.id === "a-dept") { S.addF.dept = t.value; S.addF.unit = ""; renderSheet(); }
@@ -519,6 +538,7 @@ document.addEventListener("click", async ev => {
   else if (act === "xgap") { const m = exMissing(rec(curEmp().id)); const c = m && document.querySelector('[data-xc="' + m.i + "-" + m.k + '"]'); if (c) { document.querySelectorAll(".crit.gap").forEach(x => x.classList.remove("gap")); c.classList.add("gap"); c.scrollIntoView({ behavior: "smooth", block: "center" }); } }
   else if (act === "xadd") { const r = rec(curEmp().id), i = +b.dataset.i; if (r.extra[i].length >= 10) return; r.extra[i].push({ t: "", v: null }); r.done = false; r.synced = false; saveLoc(); renderSheet(); const el = $("xt" + i + "-" + (r.extra[i].length - 1)); if (el) { el.focus(); el.scrollIntoView({ block: "center" }); } }
   else if (act === "xdel") { const r = rec(curEmp().id); r.extra[+b.dataset.i].splice(+b.dataset.k, 1); r.done = false; r.synced = false; saveLoc(); renderSheet(); }
+  else if (act === "toggle-unit") { const u = b.dataset.u; S.openU = S.openU || {}; S.openU[u] = !S.openU[u]; render_queueOnly(); }
   else if (act === "toggle-other") { S.openOther = !S.openOther; render_queueOnly(); }
   else if (act === "add-open") { S.view = "add"; S.addErr = ""; S.addF = S.addF || { name: "", pos: "", dept: S.dept, unit: "" }; render(); window.scrollTo({ top: 0 }); }
   else if (act === "add-cancel") { S.view = "form"; render(); }
