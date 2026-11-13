@@ -175,7 +175,7 @@ function scoped() { return EMPS.filter(e => e.dept === S.dept && (S.unit === "al
 const sameGrp = e => scoped().filter(x => grp(x) === grp(e));
 const reqEmps = () => EMPS.filter(e => grp(e) === "main");
 const curEmp = () => { const l = scoped(); return l.find(e => e.id === S.emp) || l[0]; };
-const head = right => '<div class="band"><div class="band-in"><div class="brand"><small>Seabreeze · Performansın idarə edilməsi</small><h1>Keyfiyyətlərin qiymətləndirilməsi</h1></div>' + (right || "") + "</div></div>";
+const head = right => '<div class="band"><div class="band-in"><div class="brand"><small>Seabreeze · Performansın idarə edilməsi · sayt v13</small><h1>Keyfiyyətlərin qiymətləndirilməsi</h1></div>' + (right || "") + "</div></div>";
 function gauge(t) {
   const R = 62, C = 2 * Math.PI * R, tn = tone(t);
   return '<div class="gauge"><svg viewBox="0 0 150 150"><circle cx="75" cy="75" r="' + R + '" fill="none" stroke="var(--line)" stroke-width="12"/><circle cx="75" cy="75" r="' + R + '" fill="none" stroke="var(--' + tn + ')" stroke-width="12" stroke-linecap="round" stroke-dasharray="' + (C * t / 100).toFixed(1) + " " + C.toFixed(1) + '"/></svg><div class="num"><b>' + fmt(t) + "</b><span>/ 100</span></div></div>";
