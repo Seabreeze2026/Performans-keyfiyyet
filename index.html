@@ -10,15 +10,15 @@
 
 /* Layout: light header band, then a login card; after login an employee queue (left) and a scoring sheet (right); admin gets progress tables. */
 :root {
-  --bg: #f2f9fb;
-  --band: #dbf1f7;
+  --bg: #eef3f9;
+  --band: #14306a;
   --surface: #ffffff;
-  --ink: #15384a;
-  --muted: #5a7886;
-  --line: #d6e7ee;
-  --accent: #0a7f9d;
+  --ink: #16263f;
+  --muted: #5d6f87;
+  --line: #dbe3ee;
+  --accent: #17356b;
   --accent-ink: #ffffff;
-  --accent-soft: #e1f4f9;
+  --accent-soft: #e6edf8;
   --good: #1a7a46;
   --mid: #94600c;
   --low: #b13a0c;
@@ -211,13 +211,47 @@ tr:last-child td { border-bottom: 0; }
 .xres { padding: 10px 12px; border-radius: 8px; background: var(--sc-soft); }
 .addform { padding: 18px; display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
 
+/* v16: navy theme (mockup) */
+.band { border-bottom: 0; }
+.brand small { color: #a9bddf; }
+.brand h1, .who-bar, .who-bar .nm { color: #fff; }
+.who-bar .btn:not(.hot) { background: #fff; color: var(--accent); border-color: #fff; }
+.filters .field select { background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23fff' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 12px center; color: #fff; border-color: var(--accent); appearance: none; -webkit-appearance: none; padding-right: 32px; }
+.filters .field select option { color: #16263f; background: #fff; }
+.filters .field label { color: #3d5173; }
+.emp .st { background: #eef2f8; }
+.unit-toggle { background: #fff; color: var(--ink); border-top: 1px solid var(--line); box-shadow: none; }
+.unit-toggle:hover { background: var(--accent-soft); }
+.unit-toggle .cnt { background: #fff1d2; border: 1px solid #f0c36a; color: #8a5200; }
+.unit-toggle .cnt.must { background: #ffe2a3; border-color: #eaa73a; color: #6b3f00; }
+.unit-toggle .chev { color: var(--muted); }
+.queue-foot .btn { background: var(--accent); color: #fff; border-color: var(--accent); }
+.queue-foot .btn:hover { background: #102a58; }
+.sx, .sx.card { background: var(--surface); border-color: var(--line); }
+.sx .sec-head { background: var(--accent); border-bottom: 0; }
+.sx .sec-head h3 { color: #fff; }
+.sx .sec-avg { background: #fff; color: var(--accent); }
+.sx .crit { border-bottom-color: var(--line); }
+.sx .scale label { background: #e3eaf4; border-color: #e3eaf4; color: var(--ink); }
+.sx .scale label:hover { background: #d3dff0; border-color: #b9cae4; }
+.sx .scale input:checked + label { background: var(--accent); border-color: var(--accent); color: #fff; }
+.sx .note textarea { background: #f7f9fc; border-color: var(--line); }
+.sx .xcrit { background: #f5f8fc; border-top-color: #c9d6ea; }
+.sx .xcrit .t { color: var(--accent); }
+.sx .xadd { border-top-color: #c9d6ea; }
+.xres { background: #e6edf8; }
+.secbars .r { background: #f3f6fb; }
+.secbars .r > span { color: var(--accent); }
+.secbars .r .bar i { background: var(--accent); }
+.dock { border-top: 1px solid var(--line); }
+
 .dock[hidden] { display: none; }
 </style>
 </head>
 <body>
 <div id="app"><p style="padding:24px">Yüklənir…</p></div>
 <div class="dock" id="dock" hidden></div>
-<script src="config.js?v=16"></script>
-<script src="app.js?v=16"></script>
+<script src="config.js?v=17"></script>
+<script src="app.js?v=17"></script>
 </body>
 </html>
