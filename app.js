@@ -175,7 +175,8 @@ function scoped() { return EMPS.filter(e => e.dept === S.dept && (S.unit === "al
 const sameGrp = e => scoped().filter(x => grp(x) === grp(e));
 const reqEmps = () => EMPS.filter(e => grp(e) === "main");
 const curEmp = () => { const l = scoped(); return l.find(e => e.id === S.emp) || l[0]; };
-const head = right => '<div class="band"><div class="band-in"><div class="brand"><small>Seabreeze · Performansın idarə edilməsi · sayt v17</small><h1>Fərdi keyfiyyətlərin qiymətləndirilməsi</h1></div>' + (right || "") + "</div></div>";
+const LOGO = '<svg viewBox="0 0 54 34" aria-hidden="true"><path d="M2 12c8-9 16-9 24-3s16 5 26-3" fill="none" stroke="#7de8f0" stroke-width="3.2" stroke-linecap="round"/><path d="M2 21c8-9 16-9 24-3s16 5 26-3" fill="none" stroke="#3fc3d4" stroke-width="3.2" stroke-linecap="round"/><path d="M2 30c8-9 16-9 24-3s16 5 26-3" fill="none" stroke="#1b9cb5" stroke-width="3.2" stroke-linecap="round"/></svg>';
+const head = right => '<div class="band"><div class="band-in"><div class="logo">' + LOGO + '<b>SEABREEZE</b><i></i><span>Performansın İdarə Edilməsi</span></div>' + (right || "") + '</div></div><div class="pagetitle"><h1>Fərdi keyfiyyətlərin qiymətləndirilməsi</h1><small>sayt v18</small></div>';
 function gauge(t) {
   const R = 62, C = 2 * Math.PI * R, tn = tone(t);
   return '<div class="gauge"><svg viewBox="0 0 150 150"><circle cx="75" cy="75" r="' + R + '" fill="none" stroke="var(--line)" stroke-width="12"/><circle cx="75" cy="75" r="' + R + '" fill="none" stroke="var(--' + tn + ')" stroke-width="12" stroke-linecap="round" stroke-dasharray="' + (C * t / 100).toFixed(1) + " " + C.toFixed(1) + '"/></svg><div class="num"><b>' + fmt(t) + "</b><span>/ 100</span></div></div>";
